@@ -5,6 +5,7 @@ from .commands import csl as csl_cmd
 from .commands import template as template_cmd
 from .commands import add as add_cmd
 from .commands import cite as cite_cmd
+from .commands import zotero as zotero_cmd
 
 app = typer.Typer(
     name="paw",
@@ -22,6 +23,10 @@ app.add_typer(add_cmd.app, name="add")
 
 # 注册 'cite' 命令
 app.command(name="cite")(cite_cmd.cite)
+
+# 注册 'zotero' 命令
+app.command(name="zotero", help='Trigger Zotero CAYW picker. Alias: "z".')(zotero_cmd.zotero)
+app.command(name="z", help='Alias for "zotero".', hidden=True)(zotero_cmd.zotero)
 
 # 注册 'csl' 和 'template' 命令组
 app.add_typer(csl_cmd.app, name="csl")
