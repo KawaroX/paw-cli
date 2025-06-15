@@ -25,3 +25,7 @@ ENV/
 
 # PAW 全局资源库 (不应在项目内)
 .paw/
+
+test/
+
+.pypirc

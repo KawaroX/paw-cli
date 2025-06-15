@@ -18,12 +18,10 @@ def slugify(text: str) -> str:
     text = re.sub(r'[-\s]+', '-', text)
     return text
 
-@app.command("chapter", help="添加一个新章节。")
-def add_chapter(title: str = typer.Argument(..., help="新章节的标题。")):
+def _add_chapter_logic(title: str):
     project_paths = utils.get_project_paths()
     manuscript_dir = project_paths["manuscript"]
     
-    # 查找最大的章节号
     max_num = 0
     for f in manuscript_dir.glob("*.md"):
         match = re.match(r'(\d+)-', f.name)
@@ -35,7 +33,6 @@ def add_chapter(title: str = typer.Argument(..., help="新章节的标题。")):
     new_filename = f"{new_num:02d}-{slug_title}.md"
     new_filepath = manuscript_dir / new_filename
 
-    # 创建文件并写入标题
     try:
         with open(new_filepath, "w", encoding="utf-8") as f:
             f.write(f"# {title}\n\n")
@@ -44,11 +41,20 @@ def add_chapter(title: str = typer.Argument(..., help="新章节的标题。")):
         console.print(f"[bold red]Error creating chapter file: {e}[/bold red]")
         raise typer.Exit(1)
 
-@app.command("figure", help="添加一张图片。")
-def add_figure(
-    source_path: Path = typer.Argument(..., help="源图片文件的路径。", exists=True, file_okay=True, dir_okay=False, readable=True),
-    caption: str = typer.Option(None, "--caption", "-c", help="图片的标题。"),
-):
+@app.command("chapter", help="添加一个新章节。 Aliases: 'chap', 'zhang'.")
+def add_chapter(title: str = typer.Argument(..., help="新章节的标题。")):
+    _add_chapter_logic(title)
+
+@app.command("chap", hidden=True)
+def add_chapter_alias_chap(title: str = typer.Argument(..., help="新章节的标题。")):
+    _add_chapter_logic(title)
+
+@app.command("zhang", hidden=True)
+def add_chapter_alias_zhang(title: str = typer.Argument(..., help="新章节的标题。")):
+    _add_chapter_logic(title)
+
+
+def _add_figure_logic(source_path: Path, caption: str | None):
     project_paths = utils.get_project_paths()
     figures_dir = project_paths["figures"]
 
@@ -58,7 +64,6 @@ def add_figure(
             console.print("Aborted.")
             raise typer.Exit()
             
-    # 复制图片
     try:
         shutil.copy(source_path, dest_path)
         console.print(f"[green]✓ Copied image to:[/green] {dest_path}")
@@ -66,7 +71,6 @@ def add_figure(
         console.print(f"[bold red]Error copying figure: {e}[/bold red]")
         raise typer.Exit(1)
 
-    # 生成并打印 Markdown 代码
     caption_text = caption if caption else "Your caption here."
     figure_slug = slugify(dest_path.stem)
     md_code = f"![{caption_text}](./figures/{dest_path.name}){{{{#fig:{figure_slug}}}}}"
@@ -74,8 +78,23 @@ def add_figure(
     console.print("\n[bold]Markdown code to insert:[/bold]")
     console.print(md_code, style="cyan")
 
-@app.command("bib", help="添加一个 .bib 参考文献文件。")
-def add_bib(source_path: Path = typer.Argument(..., help="源 .bib 文件的路径。", exists=True, file_okay=True, dir_okay=False, readable=True)):
+@app.command("figure", help="添加一张图片。 Aliases: 'fig', 'tupian'.")
+def add_figure(
+    source_path: Path = typer.Argument(..., help="源图片文件的路径。", exists=True, file_okay=True, dir_okay=False, readable=True),
+    caption: str = typer.Option(None, "--caption", "-c", help="图片的标题。"),
+):
+    _add_figure_logic(source_path, caption)
+
+@app.command("fig", hidden=True)
+def add_figure_alias_fig(source_path: Path = typer.Argument(..., help="源图片文件的路径。", exists=True, file_okay=True, dir_okay=False, readable=True), caption: str = typer.Option(None, "--caption", "-c", help="图片的标题。")):
+    _add_figure_logic(source_path, caption)
+
+@app.command("tupian", hidden=True)
+def add_figure_alias_tupian(source_path: Path = typer.Argument(..., help="源图片文件的路径。", exists=True, file_okay=True, dir_okay=False, readable=True), caption: str = typer.Option(None, "--caption", "-c", help="图片的标题。")):
+    _add_figure_logic(source_path, caption)
+
+
+def _add_bib_logic(source_path: Path):
     if source_path.suffix != ".bib":
         console.print(f"[bold red]Error:[/bold] File must be a '.bib' file.")
         raise typer.Exit(1)
@@ -89,7 +108,6 @@ def add_bib(source_path: Path = typer.Argument(..., help="源 .bib 文件的路�
             console.print("Aborted.")
             raise typer.Exit()
 
-    # 复制文件
     try:
         shutil.copy(source_path, dest_path)
         console.print(f"[green]✓ Copied bibliography to:[/green] {dest_path}")
@@ -97,6 +115,13 @@ def add_bib(source_path: Path = typer.Argument(..., help="源 .bib 文件的路�
         console.print(f"[bold red]Error copying .bib file: {e}[/bold red]")
         raise typer.Exit(1)
 
-    # 更新 YAML
     relative_path = f"resources/{dest_path.name}"
     utils.update_yaml_list(project_paths["frontmatter"], "bibliography", relative_path)
+
+@app.command("bib", help="添加一个 .bib 参考文献文件。 Alias: 'wenxian'.")
+def add_bib(source_path: Path = typer.Argument(..., help="源 .bib 文件的路径。", exists=True, file_okay=True, dir_okay=False, readable=True)):
+    _add_bib_logic(source_path)
+
+@app.command("wenxian", hidden=True)
+def add_bib_alias_wenxian(source_path: Path = typer.Argument(..., help="源 .bib 文件的路径。", exists=True, file_okay=True, dir_okay=False, readable=True)):
+    _add_bib_logic(source_path)

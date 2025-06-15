@@ -2,25 +2,26 @@ import typer
 from pathlib import Path
 from rich.console import Console
 from ..templates import file_templates
+from .. import utils
 
 console = Console()
 
 def create_project(project_path: Path, title: str):
     """业务逻辑: 创建完整的项目结构和文件"""
-    console.print(f" creating project [bold cyan]{project_path.name}[/bold cyan]...")
+    utils.ensure_paw_dirs()
 
-    # 1. 创建目录结构
+    console.print(f"🐾 [italic]scratch scratch...[/italic] creating a new territory for [bold cyan]{project_path.name}[/bold cyan]...")
+
     dirs = ["manuscript", "resources", "figures", "output"]
     try:
         project_path.mkdir(parents=True, exist_ok=True)
         for d in dirs:
             (project_path / d).mkdir(exist_ok=True)
-        console.print(" ✓ directories created.")
+        console.print(" ✓ Directories created.")
     except Exception as e:
         console.print(f"[bold red]Error creating directories: {e}[/bold red]")
         raise typer.Exit(code=1)
 
-    # 2. 创建模板文件
     files_to_create = {
         "Makefile": file_templates.get_makefile_template(),
         ".gitignore": file_templates.get_gitignore_template(),
@@ -33,28 +34,25 @@ def create_project(project_path: Path, title: str):
     try:
         for file_path, content in files_to_create.items():
             (project_path / file_path).write_text(content, encoding='utf-8')
-        console.print(" ✓ template files created.")
+        console.print(" ✓ Template files created.")
     except Exception as e:
         console.print(f"[bold red]Error creating files: {e}[/bold red]")
         raise typer.Exit(code=1)
         
     console.print(
-        "\n[bold green]Success![/bold green] "
-        f"Your new academic project '{project_path.name}' is ready."
+        f"\n[bold green]Success![/bold green] "
+        f"Project '{project_path.name}' is ready! Time to fetch some great ideas!"
     )
     console.print(f"\n[bold]Next steps:[/bold]\n"
                   f"1. `cd {project_path.name}`\n"
                   f"2. `make` to compile your document.\n"
                   )
 
-
 def new(title: str = typer.Argument(..., help="新论文的项目标题。")):
     """
     创建一个新的 PAW 学术项目。
     """
-    # 将标题转换为适合做目录名的 slug 格式
-    # 例如: "My Awesome Paper" -> "my-awesome-paper"
-    project_name_slug = title.lower().replace(" ", "-").replace(":", "-").replace("?", "")
+    project_name_slug = "".join(c for c in title.lower() if c.isalnum() or c in " -").replace(" ", "-")
     project_path = Path.cwd() / project_name_slug
 
     if project_path.exists():
