@@ -1,0 +1,27 @@
+# 忽略编译输出目录
+/output/
+
+# Python 缓存与临时文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python 构建与安装产物
+*.egg-info/
+src/*.egg-info/
+build/
+dist/
+
+# 虚拟环境目录
+.venv/
+venv/
+ENV/
+
+# 编辑器与系统文件
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# PAW 全局资源库 (不应在项目内)
+.paw/
