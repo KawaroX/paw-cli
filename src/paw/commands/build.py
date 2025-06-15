@@ -83,21 +83,56 @@ def run_pandoc(output_format: str, project_paths):
         console.print("[bold red]Error:[/bold red] 'pandoc' command not found. Please run 'paw check'.")
         raise typer.Exit(1)
 
+from typing import Optional
+
 def build(
-    pdf: bool = typer.Option(True, "--pdf/--no-pdf", help="编译 PDF。"),
-    docx: bool = typer.Option(True, "--docx/--no-docx", help="编译 DOCX。")
+    pdf: Optional[bool] = typer.Option(None, "--pdf/--no-pdf", help="编译 PDF。"),
+    docx: Optional[bool] = typer.Option(None, "--docx/--no-docx", help="编译 DOCX。")
 ):
     """
     编译项目, 生成最终文档 (跨平台, 推荐使用)。
     默认同时编译 PDF 和 DOCX。
+    如果明确指定 --pdf 或 --docx, 则只编译指定的格式。
     """
     project_paths = utils.get_project_paths()
-    
-    if not pdf and not docx:
-        console.print("Nothing to build. Use --pdf or --docx flags.")
+
+    # 初始状态：假设用户没有提供任何选项，默认生成 PDF 和 DOCX
+    build_pdf = True
+    build_docx = True
+
+    # 检查用户是否明确指定了任何一个选项
+    pdf_explicitly_set = pdf is not None
+    docx_explicitly_set = docx is not None
+
+    if pdf_explicitly_set or docx_explicitly_set:
+        # 如果用户明确指定了至少一个选项，则覆盖默认行为
+        # 此时，只有被明确设置为 True 的才生成
+        build_pdf = pdf if pdf_explicitly_set else False
+        build_docx = docx if docx_explicitly_set else False
+        
+        # 针对用户只指定其中一个选项的情况进行修正
+        if pdf_explicitly_set and not docx_explicitly_set:
+            # 用户明确指定了 PDF 选项，但没有指定 DOCX 选项
+            # 如果 pdf 是 False (即 --no-pdf)，那么只生成 DOCX
+            if not pdf:
+                build_docx = True
+            # 如果 pdf 是 True (即 --pdf)，那么不生成 DOCX
+            else:
+                build_docx = False
+        elif docx_explicitly_set and not pdf_explicitly_set:
+            # 用户明确指定了 DOCX 选项，但没有指定 PDF 选项
+            # 如果 docx 是 False (即 --no-docx)，那么只生成 PDF
+            if not docx:
+                build_pdf = True
+            # 如果 docx 是 True (即 --docx)，那么不生成 PDF
+            else:
+                build_pdf = False
+
+    if not build_pdf and not build_docx:
+        console.print("Nothing to build. Use --pdf or --docx flags, or run without flags to build both.")
         return
 
-    if pdf:
+    if build_pdf:
         run_pandoc("pdf", project_paths)
-    if docx:
+    if build_docx:
         run_pandoc("docx", project_paths)
