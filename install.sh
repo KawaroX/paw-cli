@@ -76,18 +76,20 @@ echo "下载地址: $DOWNLOAD_URL"
 
 # 关键修复：使用更健壮的下载逻辑，并提供 wget 作为备用方案
 if command -v curl >/dev/null 2>&1; then
-    # 使用 -fL 来快速失败并跟随重定向
-    curl -fL -o "$TMP_ARCHIVE" "$DOWNLOAD_URL"
-    if [ $? -ne 0 ]; then
-        echo_color "1;31" "\n错误: 使用 curl 下载失败。请检查你的网络连接后重试。"
+    # 使用 -fL (快速失败并跟随重定向), -# (简单进度条), --http1.1, 以及超时和重试
+    curl -fL -# --http1.1 --connect-timeout 20 --retry 3 -o "$TMP_ARCHIVE" "$DOWNLOAD_URL"
+    CURL_EXIT_CODE=$?
+    if [ $CURL_EXIT_CODE -ne 0 ]; then
+        echo_color "1;31" "\n错误: 使用 curl 下载失败 (退出码: $CURL_EXIT_CODE)。请检查你的网络连接后重试。"
         rm -rf "$TMP_DIR"
         exit 1
     fi
 elif command -v wget >/dev/null 2>&1; then
-    # 使用 -q (静默) 和 -O (输出文件)
-    wget -q -O "$TMP_ARCHIVE" "$DOWNLOAD_URL"
-    if [ $? -ne 0 ]; then
-        echo_color "1;31" "\n错误: 使用 wget 下载失败。请检查你的网络连接后重试。"
+    # 使用 -q (静默), -O (输出文件), 和 --timeout
+    wget -q -O "$TMP_ARCHIVE" --timeout=20 --tries=3 "$DOWNLOAD_URL"
+    WGET_EXIT_CODE=$?
+    if [ $WGET_EXIT_CODE -ne 0 ]; then
+        echo_color "1;31" "\n错误: 使用 wget 下载失败 (退出码: $WGET_EXIT_CODE)。请检查你的网络连接后重试。"
         rm -rf "$TMP_DIR"
         exit 1
     fi
