@@ -10,7 +10,7 @@
 # curl -sSL https://raw.githubusercontent.com/your-username/paw-cli/main/install.sh | sudo bash
 
 # --- 配置 (请修改为你自己的仓库信息) ---
-GITHUB_REPO="KawaroX/paw-cli"
+GITHUB_REPO="KawaroX/paw-cli
 INSTALL_DIR="/usr/local/bin"
 EXE_NAME="paw"
 # --- 配置结束 ---
@@ -56,7 +56,6 @@ echo_color "1;32" ">>> 检测到你的系统是: $OS ($ARCH)"
 # 3. 通过 GitHub API 查找最新的发布版本
 echo_color "1;32" ">>> 正在查找最新的 PAW CLI 版本..."
 LATEST_RELEASE_URL="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
-# 使用 curl 和 grep/sed 等工具从返回的 JSON 中提取 tag_name
 LATEST_VERSION=$(curl -sSL "$LATEST_RELEASE_URL" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 
 if [ -z "$LATEST_VERSION" ]; then
@@ -67,17 +66,18 @@ fi
 echo_color "1;32" "最新的版本是: $LATEST_VERSION"
 
 # 4. 构建下载链接并下载
-# 假设你发布的压缩包命名格式为: paw-v0.6.0-macos-arm64.tar.gz
 ASSET_NAME="${EXE_NAME}-${LATEST_VERSION}-${TARGET_OS}.tar.gz"
 DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/${ASSET_NAME}"
 TMP_DIR=$(mktemp -d)
 TMP_ARCHIVE="$TMP_DIR/$ASSET_NAME"
 
-echo_color "1;32" ">>> 正在下载 PAW CLI..."
+echo_color "1;32" ">>> 正在下载 PAW CLI (这可能需要一些时间)..."
 echo "下载地址: $DOWNLOAD_URL"
-curl -sSL -o "$TMP_ARCHIVE" "$DOWNLOAD_URL"
+
+# 关键修复：移除 -s (静默) 参数，使用 --progress-bar 来显示进度条
+curl --progress-bar -L -o "$TMP_ARCHIVE" "$DOWNLOAD_URL"
 if [ $? -ne 0 ]; then
-    echo_color "1;31" "错误：下载发布文件失败。"
+    echo_color "1;31" "\n错误：下载发布文件失败。"
     rm -rf "$TMP_DIR"
     exit 1
 fi
@@ -92,7 +92,6 @@ if [ $? -ne 0 ]; then
 fi
 
 # 6. 安装可执行文件
-# 可执行文件应该位于解压后的一个文件夹内，我们用 find 找到它
 EXTRACTED_EXE=$(find "$TMP_DIR" -type f -name "$EXE_NAME" | head -n 1)
 if [ -z "$EXTRACTED_EXE" ]; then
     echo_color "1;31" "错误：在压缩包中找不到名为 '$EXE_NAME' 的可执行文件。"
@@ -114,4 +113,4 @@ chmod +x "$TARGET_EXE"
 rm -rf "$TMP_DIR"
 
 echo_color "1;32" "\n✅ PAW CLI 已成功安装！"
-echo_color "1;32" "现在你可以在终端的任何位置运行 '$EXE_NAME --help'。
+echo_color "1;32" "现在你可以在终端的任何位置运行 '$EXE_NAME --help'。"
