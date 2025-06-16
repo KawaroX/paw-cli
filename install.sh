@@ -7,9 +7,9 @@
 # 并将其安装到 /usr/local/bin，从而让用户可以在任何位置直接使用 `paw` 命令。
 #
 # 用户使用方法:
-# curl -sSL https://raw.githubusercontent.com/your-username/paw-cli/main/install.sh | sudo bash
+# curl -sSL https://raw.githubusercontent.com/KawaroX/paw-cli/main/install.sh | sudo bash
 
-# --- 配置 (请修改为你自己的仓库信息) ---
+# --- 配置 ---
 GITHUB_REPO="KawaroX/paw-cli"
 INSTALL_DIR="/usr/local/bin"
 EXE_NAME="paw"
@@ -92,7 +92,13 @@ if [ $? -ne 0 ]; then
 fi
 
 # 6. 安装可执行文件
+# 在解压后的文件夹里，我们的应用叫 `paw` (PyInstaller) 或 `paw` (Nuitka)
 EXTRACTED_EXE=$(find "$TMP_DIR" -type f -name "$EXE_NAME" | head -n 1)
+if [ -z "$EXTRACTED_EXE" ]; then
+    # 如果找不到 paw, 可能是 Nuitka 生成的带 .bin 后缀的文件
+    EXTRACTED_EXE=$(find "$TMP_DIR" -type f -name "${EXE_NAME}.bin" | head -n 1)
+fi
+
 if [ -z "$EXTRACTED_EXE" ]; then
     echo_color "1;31" "错误：在压缩包中找不到名为 '$EXE_NAME' 的可执行文件。"
     rm -rf "$TMP_DIR"
@@ -101,6 +107,8 @@ fi
 
 TARGET_EXE="$INSTALL_DIR/$EXE_NAME"
 echo_color "1;32" ">>> 正在安装 PAW CLI 到 $TARGET_EXE..."
+# 在移动前先删除可能存在的旧版本
+rm -f "$TARGET_EXE"
 mv "$EXTRACTED_EXE" "$TARGET_EXE"
 if [ $? -ne 0 ]; then
     echo_color "1;31" "错误：移动文件失败，请检查 $INSTALL_DIR 的写入权限。"
