@@ -1,10 +1,7 @@
 #!/bin/bash
 #
-# PAW CLI Installer Script for macOS & Linux
+# PAW CLI Installer Script for macOS & Linux (with proxy support)
 # ==========================================
-#
-# 这个脚本会自动从 GitHub Releases 下载最新预编译的 PAW 二进制文件，
-# 并将其安装到 /usr/local/bin，从而让用户可以在任何位置直接使用 `paw` 命令。
 #
 # 用户使用方法:
 # curl -sSL https://raw.githubusercontent.com/KawaroX/paw-cli/main/install.sh | sudo bash
@@ -22,14 +19,14 @@ echo_color() {
     echo -e "\033[${color_code}m$@\033[0m"
 }
 
-# 1. 检查 root 权限
+# 检查 root 权限
 if [ "$(id -u)" -ne 0 ]; then
     echo_color "1;31" "错误：此脚本需要使用 sudo 运行。"
     echo_color "1;31" "请像这样运行: curl -sSL ... | sudo bash"
     exit 1
 fi
 
-# 2. 检测操作系统和架构
+# 检测操作系统和架构
 OS=$(uname -s)
 ARCH=$(uname -m)
 
@@ -53,7 +50,15 @@ fi
 
 echo_color "1;32" ">>> 检测到你的系统是: $OS ($ARCH)"
 
-# 3. 通过 GitHub API 查找最新的发布版本
+# 检查代理环境变量
+if [ -n "$https_proxy" ] || [ -n "$HTTPS_PROXY" ] || [ -n "$ALL_PROXY" ] || [ -n "$all_proxy" ]; then
+    echo_color "1;34" "检测到代理环境变量，curl/wget 将自动使用代理。"
+else
+    echo_color "1;33" "未检测到代理环境变量。如果你在中国大陆，建议设置代理以加速 GitHub 下载。"
+    echo_color "1;33" "例如：export https_proxy=\"http://127.0.0.1:7890\""
+fi
+
+# 通过 GitHub API 查找最新的发布版本
 echo_color "1;32" ">>> 正在查找最新的 PAW CLI 版本..."
 LATEST_RELEASE_URL="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
 LATEST_VERSION=$(curl -sSL "$LATEST_RELEASE_URL" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
@@ -65,7 +70,7 @@ fi
 
 echo_color "1;32" "最新的版本是: $LATEST_VERSION"
 
-# 4. 构建下载链接并下载
+# 构建下载链接并下载
 ASSET_NAME="${EXE_NAME}-${LATEST_VERSION}-${TARGET_OS}.tar.gz"
 DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/${ASSET_NAME}"
 TMP_DIR=$(mktemp -d)
@@ -74,32 +79,54 @@ TMP_ARCHIVE="$TMP_DIR/$ASSET_NAME"
 echo_color "1;32" ">>> 正在下载 PAW CLI (这可能需要一些时间)..."
 echo "下载地址: $DOWNLOAD_URL"
 
-# 关键修复：使用更健壮的下载逻辑，并提供 wget 作为备用方案
-if command -v curl >/dev/null 2>&1; then
-    # 使用 -fL (快速失败并跟随重定向), -# (简单进度条), --http1.1, 以及超时和重试
-    curl -fL -# --http1.1 --connect-timeout 20 --retry 3 -o "$TMP_ARCHIVE" "$DOWNLOAD_URL"
-    CURL_EXIT_CODE=$?
-    if [ $CURL_EXIT_CODE -ne 0 ]; then
-        echo_color "1;31" "\n错误: 使用 curl 下载失败 (退出码: $CURL_EXIT_CODE)。请检查你的网络连接后重试。"
-        rm -rf "$TMP_DIR"
-        exit 1
-    fi
-elif command -v wget >/dev/null 2>&1; then
-    # 使用 -q (静默), -O (输出文件), 和 --timeout
-    wget -q -O "$TMP_ARCHIVE" --timeout=20 --tries=3 "$DOWNLOAD_URL"
-    WGET_EXIT_CODE=$?
-    if [ $WGET_EXIT_CODE -ne 0 ]; then
-        echo_color "1;31" "\n错误: 使用 wget 下载失败 (退出码: $WGET_EXIT_CODE)。请检查你的网络连接后重试。"
-        rm -rf "$TMP_DIR"
-        exit 1
-    fi
-else
-    echo_color "1;31" "错误: 下载失败，你的系统需要安装 curl 或 wget。"
+# 下载函数，支持 curl/wget，自动使用代理
+download_with_retry() {
+    local url="$1"
+    local output="$2"
+    local try=1
+    local max_try=3
+    while [ $try -le $max_try ]; do
+        if command -v curl >/dev/null 2>&1; then
+            curl -fL --http1.1 --connect-timeout 20 --retry 2 -o "$output" "$url"
+            CURL_EXIT_CODE=$?
+            if [ $CURL_EXIT_CODE -eq 0 ]; then
+                return 0
+            fi
+        elif command -v wget >/dev/null 2>&1; then
+            wget -q -O "$output" --timeout=20 --tries=2 "$url"
+            WGET_EXIT_CODE=$?
+            if [ $WGET_EXIT_CODE -eq 0 ]; then
+                return 0
+            fi
+        else
+            echo_color "1;31" "错误: 下载失败，你的系统需要安装 curl 或 wget。"
+            return 1
+        fi
+        echo_color "1;33" "第 $try 次下载失败，正在重试..."
+        try=$((try+1))
+        sleep 2
+    done
+    return 1
+}
+
+download_with_retry "$DOWNLOAD_URL" "$TMP_ARCHIVE"
+if [ $? -ne 0 ]; then
+    echo_color "1;31" "\n❌ 错误: 无法下载文件。"
+    echo_color "1;33" "常见原因："
+    echo_color "1;33" "1. 你的网络环境无法直连 GitHub Releases（被墙或限速）"
+    echo_color "1;33" "2. 没有配置代理"
+    echo_color "1;33" "3. DNS 污染或 SSL 被干扰"
+    echo_color "1;33" "解决办法："
+    echo_color "1;33" "1. 配置代理后重新运行本脚本，例如："
+    echo_color "1;36" "   export https_proxy=\"http://127.0.0.1:7890\""
+    echo_color "1;33" "2. 或者用浏览器手动下载："
+    echo_color "1;36" "   $DOWNLOAD_URL"
+    echo_color "1;33" "   然后解压并将 paw 移动到 /usr/local/bin"
+    rm -rf "$TMP_DIR"
     exit 1
 fi
 
-
-# 5. 解压压缩包
+# 解压压缩包
 echo_color "1;32" ">>> 正在解压..."
 tar -xzf "$TMP_ARCHIVE" -C "$TMP_DIR"
 if [ $? -ne 0 ]; then
@@ -108,7 +135,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 6. 安装可执行文件
+# 安装可执行文件
 EXTRACTED_EXE=$(find "$TMP_DIR" -type f -name "$EXE_NAME" | head -n 1)
 if [ -z "$EXTRACTED_EXE" ]; then
     EXTRACTED_EXE=$(find "$TMP_DIR" -type f -name "${EXE_NAME}.bin" | head -n 1)
@@ -122,7 +149,6 @@ fi
 
 TARGET_EXE="$INSTALL_DIR/$EXE_NAME"
 echo_color "1;32" ">>> 正在安装 PAW CLI 到 $TARGET_EXE..."
-# 在移动前先删除可能存在的旧版本
 rm -f "$TARGET_EXE"
 mv "$EXTRACTED_EXE" "$TARGET_EXE"
 if [ $? -ne 0 ]; then
@@ -131,7 +157,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 7. 设置执行权限并清理
 chmod +x "$TARGET_EXE"
 rm -rf "$TMP_DIR"
 
