@@ -1,14 +1,20 @@
 #!/bin/bash
 #
-# PAW CLI Installer Script for macOS & Linux (with proxy support)
+# PAW CLI Installer Script for macOS & Linux
 # ==========================================
 #
+# (最终版) 这个脚本会自动下载并正确安装 PAW CLI，
+# 将整个应用包放置在 /usr/local/opt，并创建一个符号链接到 /usr/local/bin。
+#
 # 用户使用方法:
-# curl -sSL https://raw.githubusercontent.com/KawaroX/paw-cli/main/install.sh | sudo bash
+# curl -sSL https://raw.githubusercontent.com/KawaroX/paw-cli/main/install.sh | sudo -E bash
 
 # --- 配置 ---
 GITHUB_REPO="KawaroX/paw-cli"
-INSTALL_DIR="/usr/local/bin"
+# 将整个应用安装到这个目录
+APP_INSTALL_DIR="/usr/local/opt/paw-cli"
+# 在这个目录创建符号链接
+BIN_DIR="/usr/local/bin"
 EXE_NAME="paw"
 # --- 配置结束 ---
 
@@ -19,14 +25,14 @@ echo_color() {
     echo -e "\033[${color_code}m$@\033[0m"
 }
 
-# 检查 root 权限
+# 1. 检查 root 权限
 if [ "$(id -u)" -ne 0 ]; then
     echo_color "1;31" "错误：此脚本需要使用 sudo 运行。"
-    echo_color "1;31" "请像这样运行: curl -sSL ... | sudo bash"
+    echo_color "1;31" "请像这样运行: curl ... | sudo -E bash"
     exit 1
 fi
 
-# 检测操作系统和架构
+# 2. 检测操作系统和架构
 OS=$(uname -s)
 ARCH=$(uname -m)
 
@@ -36,29 +42,14 @@ if [ "$OS" == "Darwin" ]; then
     else
         TARGET_OS="macos-x86_64"
     fi
-elif [ "$OS" == "Linux" ]; then
-     if [ "$ARCH" == "x86_64" ]; then
-        TARGET_OS="linux-amd64"
-     else
-        echo_color "1;31" "错误：不支持的 Linux 架构: $ARCH"
-        exit 1
-     fi
 else
-    echo_color "1;31" "错误：不支持的操作系统: $OS"
+    echo_color "1;31" "错误：仅支持 macOS。"
     exit 1
 fi
 
 echo_color "1;32" ">>> 检测到你的系统是: $OS ($ARCH)"
 
-# 检查代理环境变量
-if [ -n "$https_proxy" ] || [ -n "$HTTPS_PROXY" ] || [ -n "$ALL_PROXY" ] || [ -n "$all_proxy" ]; then
-    echo_color "1;34" "检测到代理环境变量，curl/wget 将自动使用代理。"
-else
-    echo_color "1;33" "未检测到代理环境变量。如果你在中国大陆，建议设置代理以加速 GitHub 下载。"
-    echo_color "1;33" "例如：export https_proxy=\"http://127.0.0.1:7890\""
-fi
-
-# 通过 GitHub API 查找最新的发布版本
+# 3. 查找最新的发布版本
 echo_color "1;32" ">>> 正在查找最新的 PAW CLI 版本..."
 LATEST_RELEASE_URL="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
 LATEST_VERSION=$(curl -sSL "$LATEST_RELEASE_URL" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
@@ -70,94 +61,48 @@ fi
 
 echo_color "1;32" "最新的版本是: $LATEST_VERSION"
 
-# 构建下载链接并下载
-ASSET_NAME="${EXE_NAME}-${LATEST_VERSION}-${TARGET_OS}.tar.gz"
+# 4. 下载并解压
+ASSET_NAME="paw-${LATEST_VERSION}-${TARGET_OS}.tar.gz"
 DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${LATEST_VERSION}/${ASSET_NAME}"
 TMP_DIR=$(mktemp -d)
 TMP_ARCHIVE="$TMP_DIR/$ASSET_NAME"
 
-echo_color "1;32" ">>> 正在下载 PAW CLI (这可能需要一些时间)..."
+echo_color "1;32" ">>> 正在下载 PAW CLI..."
 echo "下载地址: $DOWNLOAD_URL"
-
-# 下载函数，支持 curl/wget，自动使用代理
-download_with_retry() {
-    local url="$1"
-    local output="$2"
-    local try=1
-    local max_try=3
-    while [ $try -le $max_try ]; do
-        if command -v curl >/dev/null 2>&1; then
-            curl -fL --http1.1 --connect-timeout 20 --retry 2 -o "$output" "$url"
-            CURL_EXIT_CODE=$?
-            if [ $CURL_EXIT_CODE -eq 0 ]; then
-                return 0
-            fi
-        elif command -v wget >/dev/null 2>&1; then
-            wget -q -O "$output" --timeout=20 --tries=2 "$url"
-            WGET_EXIT_CODE=$?
-            if [ $WGET_EXIT_CODE -eq 0 ]; then
-                return 0
-            fi
-        else
-            echo_color "1;31" "错误: 下载失败，你的系统需要安装 curl 或 wget。"
-            return 1
-        fi
-        echo_color "1;33" "第 $try 次下载失败，正在重试..."
-        try=$((try+1))
-        sleep 2
-    done
-    return 1
-}
-
-download_with_retry "$DOWNLOAD_URL" "$TMP_ARCHIVE"
+curl -fL -# -o "$TMP_ARCHIVE" "$DOWNLOAD_URL"
 if [ $? -ne 0 ]; then
-    echo_color "1;31" "\n❌ 错误: 无法下载文件。"
-    echo_color "1;33" "常见原因："
-    echo_color "1;33" "1. 你的网络环境无法直连 GitHub Releases（被墙或限速）"
-    echo_color "1;33" "2. 没有配置代理"
-    echo_color "1;33" "3. DNS 污染或 SSL 被干扰"
-    echo_color "1;33" "解决办法："
-    echo_color "1;33" "1. 配置代理后重新运行本脚本，例如："
-    echo_color "1;36" "   export https_proxy=\"http://127.0.0.1:7890\""
-    echo_color "1;33" "2. 或者用浏览器手动下载："
-    echo_color "1;36" "   $DOWNLOAD_URL"
-    echo_color "1;33" "   然后解压并将 paw 移动到 /usr/local/bin"
+    echo_color "1;31" "\n错误: 下载失败。请检查你的网络连接。"
     rm -rf "$TMP_DIR"
     exit 1
 fi
 
-# 解压压缩包
 echo_color "1;32" ">>> 正在解压..."
 tar -xzf "$TMP_ARCHIVE" -C "$TMP_DIR"
-if [ $? -ne 0 ]; then
-    echo_color "1;31" "错误：解压失败。"
+# 解压后，我们应该得到一个名为 `paw` 的文件夹
+EXTRACTED_APP_DIR="$TMP_DIR/paw"
+if [ ! -d "$EXTRACTED_APP_DIR" ]; then
+    echo_color "1;31" "错误：压缩包中没有找到 'paw' 文件夹。"
     rm -rf "$TMP_DIR"
     exit 1
 fi
 
-# 安装可执行文件
-EXTRACTED_EXE=$(find "$TMP_DIR" -type f -name "$EXE_NAME" | head -n 1)
-if [ -z "$EXTRACTED_EXE" ]; then
-    EXTRACTED_EXE=$(find "$TMP_DIR" -type f -name "${EXE_NAME}.bin" | head -n 1)
-fi
+# 5. 安装整个应用文件夹
+echo_color "1;32" ">>> 正在安装 PAW CLI 到 $APP_INSTALL_DIR..."
+# 在安装前先删除可能存在的旧版本
+rm -rf "$APP_INSTALL_DIR"
+# 创建父目录 (如果不存在)
+mkdir -p "$(dirname "$APP_INSTALL_DIR")"
+# 移动整个文件夹
+mv "$EXTRACTED_APP_DIR" "$APP_INSTALL_DIR"
 
-if [ -z "$EXTRACTED_EXE" ]; then
-    echo_color "1;31" "错误：在压缩包中找不到名为 '$EXE_NAME' 的可执行文件。"
-    rm -rf "$TMP_DIR"
-    exit 1
-fi
+# 6. 创建符号链接
+TARGET_LINK="$BIN_DIR/$EXE_NAME"
+REAL_EXE_PATH="$APP_INSTALL_DIR/$EXE_NAME"
+echo_color "1;32" ">>> 正在创建符号链接到 $TARGET_LINK..."
+# -f 强制覆盖已存在的链接, -s 创建符号链接
+ln -sf "$REAL_EXE_PATH" "$TARGET_LINK"
 
-TARGET_EXE="$INSTALL_DIR/$EXE_NAME"
-echo_color "1;32" ">>> 正在安装 PAW CLI 到 $TARGET_EXE..."
-rm -f "$TARGET_EXE"
-mv "$EXTRACTED_EXE" "$TARGET_EXE"
-if [ $? -ne 0 ]; then
-    echo_color "1;31" "错误：移动文件失败，请检查 $INSTALL_DIR 的写入权限。"
-    rm -rf "$TMP_DIR"
-    exit 1
-fi
-
-chmod +x "$TARGET_EXE"
+# 7. 清理
 rm -rf "$TMP_DIR"
 
 echo_color "1;32" "\n✅ PAW CLI 已成功安装！"
