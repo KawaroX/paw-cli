@@ -20,7 +20,6 @@ app = typer.Typer(
     help="🐾 PAW: Your loyal academic companion. Let me lend a paw!",
     add_completion=False,
     no_args_is_help=True,
-    context_settings={"help_option_names": ["--help", "-h"]},
 )
 
 # --- 核心功能命令 ---
@@ -34,7 +33,6 @@ app.command(name="dig", help="深入诊断项目依赖。 Alias for 'check'.")(c
 app.command(name="purr", help="检查项目健康状态 (如果一切正常会发出呼噜声)。")(check_cmd.check_purr)
 
 # --- 编译命令 (推荐) ---
-# 将 build 函数直接注册为顶层命令
 app.command(name="build", help="编译项目, 生成最终文档。")(build_cmd.build)
 app.command(name="b", help='Alias for "build".', hidden=True)(build_cmd.build)
 
@@ -62,7 +60,7 @@ app.add_typer(template_cmd.app, name="moban", help='Alias for "template".', hidd
 
 
 # --- 趣味性与实用工具 ---
-app.command(name="shake", help="清理输出目录。")(shake_cmd.shake)
+app.command(name="shake", help="清理输出目录 (像狗狗甩水一样)。")(shake_cmd.shake)
 app.command(name="meow", help="显示一条随机的学术写作小贴士。")(easter_eggs_cmd.meow)
 app.command(name="woof", help="快速汇报项目统计信息。")(easter_eggs_cmd.woof)
 
@@ -72,6 +70,9 @@ app.command(name="paw", hidden=True)(easter_eggs_cmd.show_paw)
 app.command(name="🐾", help='Alias for "paw".', hidden=True)(easter_eggs_cmd.show_paw)
 app.command(name="who-is-a-good-writer", hidden=True)(easter_eggs_cmd.praise)
 
+# 添加一个 main 函数以适配可能的未来扩展
+def main():
+    app()
 
 if __name__ == "__main__":
-    app()
+    main()

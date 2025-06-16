@@ -22,18 +22,20 @@ def create_project(project_path: Path, title: str):
         console.print(f"[bold red]Error creating directories: {e}[/bold red]")
         raise typer.Exit(code=1)
 
+    # 最终的文件结构，使用 metadata.yaml 替代 00-frontmatter.md
     files_to_create = {
         "Makefile": file_templates.get_makefile_template(),
-        ".gitignore": file_templates.get_gitignore_template(),
-        "README.md": file_templates.get_readme_template(project_path.name),
-        "manuscript/00-frontmatter.md": file_templates.get_frontmatter_template(title),
+        ".gitignore": file_templates.get_gitignore_template() or "...", # 如果模板为空，提供默认值
+        "README.md": file_templates.get_readme_template(project_path.name) or "...", # 同上
+        "manuscript/metadata.yaml": file_templates.get_metadata_template(title),
         "manuscript/01-introduction.md": file_templates.get_introduction_template(),
         "resources/bibliography.bib": "# Your references go here",
     }
 
     try:
         for file_path, content in files_to_create.items():
-            (project_path / file_path).write_text(content, encoding='utf-8')
+            if content and content != "...":
+                (project_path / file_path).write_text(content, encoding='utf-8')
         console.print(" ✓ Template files created.")
     except Exception as e:
         console.print(f"[bold red]Error creating files: {e}[/bold red]")
@@ -41,12 +43,22 @@ def create_project(project_path: Path, title: str):
         
     console.print(
         f"\n[bold green]Success![/bold green] "
-        f"Project '{project_path.name}' is ready! Time to fetch some great ideas!"
+        f"Project '{project_path.name}' is ready!"
+    )
+    console.print(
+        "\n[bold yellow]Important:[/bold yellow] All project settings are now in "
+        "[cyan]manuscript/metadata.yaml[/cyan]."
     )
     console.print(f"\n[bold]Next steps:[/bold]\n"
                   f"1. `cd {project_path.name}`\n"
-                  f"2. `make` to compile your document.\n"
+                  f"2. `paw build` to compile your document.\n"
                   )
+    console.print(
+        "[bold red]Warning:[/bold red] "
+        "Please do not use 'sudo' to run 'paw' commands, "
+        "as it will cause permission issues."
+    )
+
 
 def new(title: str = typer.Argument(..., help="新论文的项目标题。")):
     """

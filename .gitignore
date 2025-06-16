@@ -29,3 +29,12 @@ ENV/
 test/
 
 .pypirc
+build_resources/
+build_resources_nuitka/
+dist/
+dist copy/
+dist_nuitka/
+run_paw.build/
+run_paw.dist
+
+paw.spec

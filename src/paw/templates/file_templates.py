@@ -2,21 +2,24 @@
 
 import textwrap
 
-def get_frontmatter_template(title: str) -> str:
-    # 最终修正版的 frontmatter 模板, 修复了缩进问题
-    # 使用 textwrap.dedent 来正确处理多行字符串的缩进
+def get_metadata_template(title: str) -> str:
+    """
+    (最终版) 生成一个独立的 metadata.yaml 文件。
+    这个方案将配置与内容彻底分离，保证了稳定性。
+    """
     return textwrap.dedent(f'''\
-        ---
         # ======================================================================
-        # PAW (Pandoc Academic Workflow) - YAML Frontmatter
+        # PAW (Pandoc Academic Workflow) - Metadata File
         # ======================================================================
-        
+        # 
+        # 这是项目的核心配置文件。PAW 会在编译时读取此文件。
+
         # --- 核心元数据 ---
         title: "{title}"
         author: 
           - 你的名字
         date: today # `today` 会自动替换为当前日期
-        abstract: |
+        abstract: |  # 使用 `|` 来支持多行文本
           在这里撰写你的论文摘要。
           摘要内容可以跨越多行。
         keywords: ["关键词1", "关键词2", "关键词3"]
@@ -27,60 +30,44 @@ def get_frontmatter_template(title: str) -> str:
         
         # --- 章节文件控制 (高级功能) ---
         # 默认情况下, PAW 会自动编译 manuscript/ 文件夹下所有 `数字-` 开头的 .md 文件。
-        # 如果你想精确控制编译哪些章节 (例如, 暂时排除某个草稿章节),
-        # 可以取消下方 `input-files` 的注释, 并手动指定文件列表。
+        # 如果你想精确控制编译哪些章节, 可以取消下方 `input-files` 的注释。
+        # 注意：这里的路径是相对于项目根目录的。摘要 (abstract) 是元数据，不应包含在此列表中。
         # input-files:
         #   - manuscript/01-introduction.md
-        #   - manuscript/02-literature-review.md
-        #   # - manuscript/03-draft-chapter.md # <-- 像这样注释掉即可排除
-        #   - manuscript/04-methodology.md
+        #   # - manuscript/02-draft-chapter.md # <-- 像这样注释掉即可排除
 
         # --- 本地化与标题 ---
         lang: "zh-CN"
-        abstract-title: "摘要"
+        abstract-title: "摘要" # Pandoc 会为 abstract 内容自动添加标题
         reference-section-title: "参考文献"
         
         # --- 引用与文献 ---
-        csl: "law-citation-manual.csl" # 默认引用样式
+        csl: "law-citation-manual.csl"
         bibliography: 
-          - resources/bibliography.bib # 默认文献库
+          - resources/bibliography.bib
         link-citations: true
 
         # --- 交叉引用与链接 ---
-        # pandoc-crossref 的配置
         figPrefix: "图"
         tblPrefix: "表"
         eqPrefix: "公式"
-        # 内部链接设置
         link-crossrefs: true
-        link-bibliography: true # 在参考文献列表中为条目添加链接
+        link-bibliography: true
         
         # --- 格式与字体 ---
-        # 以下为推荐配置。请根据你的操作系统安装并选择合适的字体。
-        # macOS 常见中文字体: Songti SC (宋体), Kaiti SC (楷体), Heiti SC (黑体)
-        # Windows 常见中文字体: SimSun (宋体), SimHei (黑体), Kaiti (楷体)
         fontsize: 12pt
         geometry:
           - "top=3cm, bottom=3cm, left=2.5cm, right=2.5cm"
         mainfont: "Times New Roman"
         monofont: "Courier New"
-        CJKmainfont: "Songti SC" # 默认使用 macOS 的宋体, Windows 用户请修改为 SimSun
-        CJKmonofont: "Heiti SC" # 默认使用 macOS 的黑体, Windows 用户请修改为 SimHei
+        CJKmainfont: "Songti SC"
+        CJKmonofont: "Heiti SC"
 
         # --- Word 文档模板 ---
-        # 可通过 `paw template use <模板名>` 命令来设置
         # reference-doc: your-template.docx
         
         # --- PDF 渲染引擎 ---
-        # 推荐使用 xelatex 以获得最佳的中文支持
         pdf-engine: xelatex
-        ---
-        
-        <!-- 
-        此文件用于定义整篇论文的元数据。
-        Pandoc 会在编译时读取这些配置。
-        正文内容请在 01-introduction.md 等文件中编写。
-        -->
     ''')
 
 
@@ -92,7 +79,68 @@ def get_introduction_template() -> str:
     ''').strip()
 
 
+def get_makefile_template() -> str:
+    # 最终版的 Makefile, 使用 --metadata-file, 更健壮
+    return textwrap.dedent('''
+        # ==============================================================================
+        # PAW (Pandoc Academic Workflow) 生成的 Makefile - v1.0 (Final)
+        # ==============================================================================
+        
+        # --- 基本配置 ---
+        DOC_NAME = paper
+        SRC_DIR = manuscript
+        OUT_DIR = output
+        RES_DIR = resources
+        METADATA_FILE = $(SRC_DIR)/metadata.yaml
+
+        # --- 智能章节检测 ---
+        CHAPTERS_FROM_YAML := $(shell awk '/^input-files:/,/^[^ ]/ {{if ($$0 ~ /^-/) print $$2}}' $(METADATA_FILE))
+
+        ifeq ($(strip $(CHAPTERS_FROM_YAML)),)
+        	CHAPTER_FILES := $(shell find $(SRC_DIR) -name '[0-9]*.md' | sort)
+        else
+            CHAPTER_FILES := $(CHAPTERS_FROM_YAML)
+        endif
+
+        # --- Pandoc 配置 ---
+        PANDOC = pandoc
+        # 关键修复：将资源路径重新加入编译参数
+        PANDOC_RESOURCE_PATHS = --resource-path=.:$(RES_DIR):$(HOME)/.paw/csl:$(HOME)/.paw/templates
+        PANDOC_METADATA = --metadata-file=$(METADATA_FILE)
+        PANDOC_FILTERS = -F pandoc-crossref
+        PANDOC_CITEPROC = --citeproc
+        
+        PANDOC_FLAGS = $(PANDOC_RESOURCE_PATHS) $(PANDOC_METADATA) $(PANDOC_FILTERS) $(PANDOC_CITEPROC)
+
+        # --- 目标定义 ---
+        .PHONY: all pdf docx clean
+
+        all: pdf docx
+
+        pdf: $(OUT_DIR)/$(DOC_NAME).pdf
+        docx: $(OUT_DIR)/$(DOC_NAME).docx
+
+        # --- 编译规则 ---
+        $(OUT_DIR):
+        	@mkdir -p $(OUT_DIR)
+
+        $(OUT_DIR)/$(DOC_NAME).pdf: $(CHAPTER_FILES) $(METADATA_FILE) | $(OUT_DIR)
+        	@echo " brewing PDF..."
+        	@$(PANDOC) $(PANDOC_FLAGS) -o $@ $(CHAPTER_FILES)
+        	@echo "✅ Successfully created $@"
+
+        $(OUT_DIR)/$(DOC_NAME).docx: $(CHAPTER_FILES) $(METADATA_FILE) | $(OUT_DIR)
+        	@echo " baking DOCX..."
+        	@$(PANDOC) $(PANDOC_FLAGS) -o $@ $(CHAPTER_FILES)
+        	@echo "✅ Successfully created $@"
+
+        clean:
+        	@echo " cleaning output directory..."
+        	@rm -rf $(OUT_DIR)/*
+    ''')
+
 def get_gitignore_template() -> str:
+    # (已恢复完整内容)
     return textwrap.dedent('''
         # PAW 生成的 .gitignore
 
@@ -125,9 +173,8 @@ def get_gitignore_template() -> str:
         .paw/
     ''').strip()
 
-
 def get_readme_template(project_name: str) -> str:
-    # 更新 README 以推荐使用 paw build 命令
+    # (已恢复完整内容)
     return textwrap.dedent(f'''
         # {project_name}
 
@@ -135,11 +182,10 @@ def get_readme_template(project_name: str) -> str:
 
         ## 快速开始
 
-        1.  **编写内容**: 在 `manuscript/` 文件夹中编写你的 Markdown 文件。文件名以 `数字-` 开头以确保编译顺序。
-        2.  **管理资源**:
-            - 使用 `paw csl add <样式文件.csl>` 将你常用的 CSL 文件添加到全局库。
-            - 运行 `paw zotero` (或 `paw z`) 调出选择器，插入引文。
-        3.  **编译文档**: 在项目根目录下，打开终端，运行 `paw build`。
+        1.  **编辑配置**: 打开 `manuscript/metadata.yaml` 文件，修改你的论文标题、作者等信息。
+        2.  **开始写作**: 在 `manuscript/` 文件夹中编写你的 Markdown 文件，例如 `01-introduction.md`。
+        3.  **插入引文**: 运行 `paw z` 唤出 Zotero 选择器。
+        4.  **编译文档**: 在项目根目录下，运行 `paw build`。
 
         ## 核心工作流
 
@@ -148,13 +194,12 @@ def get_readme_template(project_name: str) -> str:
         PAW 提供两种模式来管理你的章节：
 
         1.  **自动模式 (默认)**
-            -   你只需在 `manuscript/` 目录下创建以 `数字-` 开头的文件 (例如 `01-introduction.md`)。
-            -   `paw build` 命令会自动按顺序找到并编译所有这些文件。
+            -   `paw build` 命令会自动按数字顺序找到并编译 `manuscript/` 目录下的所有 `.md` 文件。
 
         2.  **手动模式 (高级)**
-            -   打开 `manuscript/00-frontmatter.md` 文件。
+            -   打开 `manuscript/metadata.yaml` 文件。
             -   找到被注释掉的 `input-files` 列表。
-            -   取消注释，并手动指定你想要编译的文件列表。这对于临时排除草稿章节非常有用。
+            -   取消注释，并手动指定你想要编译的文件列表。
 
         ### 编译命令
 
@@ -166,70 +211,7 @@ def get_readme_template(project_name: str) -> str:
         祝你写作顺利！
     ''').strip()
 
-
-def get_makefile_template() -> str:
-    # 最终版的 Makefile, 实现了对 input-files 和 reference-doc 的智能判断
-    return textwrap.dedent('''
-        # ==============================================================================
-        # PAW (Pandoc Academic Workflow) 生成的 Makefile - v1.0 (Final)
-        # ==============================================================================
-        #
-        # 注意: Makefile 仅为熟悉 make 的用户提供便利。
-        # 推荐使用跨平台的 `paw build` 命令来编译项目。
-        
-        # --- 基本配置 ---
-        DOC_NAME = paper
-        SRC_DIR = manuscript
-        OUT_DIR = output
-        RES_DIR = resources
-        FRONTMATTER = $(SRC_DIR)/00-frontmatter.md
-
-        # --- 智能章节检测 ---
-        INPUT_FILES_FROM_YAML := $(shell awk '/^input-files:/,/^[^ ]|---$$/ {{if ($$0 ~ /^-/) print $$2}}' $(FRONTMATTER))
-
-        ifeq ($(strip $(INPUT_FILES_FROM_YAML)),)
-        	CHAPTERS := $(shell find $(SRC_DIR) -name '[0-9]*.md' | sort)
-        else
-        	CHAPTERS := $(INPUT_FILES_FROM_YAML)
-        endif
-
-        # --- Pandoc 配置 ---
-        PANDOC = pandoc
-        PANDOC_RESOURCE_PATHS = --resource-path=.:$(RES_DIR):$(HOME)/.paw/csl:$(HOME)/.paw/templates
-        PANDOC_FILTERS = -F pandoc-crossref
-        PANDOC_CITEPROC = --citeproc
-        PDF_ENGINE = --pdf-engine=xelatex
-        
-        # --- DOCX 模板智能检测 ---
-        # 从 YAML frontmatter 中直接读取 reference-doc 的值, Pandoc 会利用 resource-path 自动查找
-        WORD_TEMPLATE_FILE := $(shell awk '/^reference-doc:/ {{$$1=""; print $$0}}' $(FRONTMATTER) | xargs)
-        WORD_TEMPLATE_FLAG := $(if $(WORD_TEMPLATE_FILE),--reference-doc="$(WORD_TEMPLATE_FILE)",)
-        
-        PANDOC_FLAGS = $(PANDOC_RESOURCE_PATHS) $(PANDOC_FILTERS) $(PANDOC_CITEPROC)
-
-        # --- 目标定义 ---
-        .PHONY: all pdf docx clean
-
-        all: pdf docx
-
-        pdf: $(OUT_DIR)/$(DOC_NAME).pdf
-        docx: $(OUT_DIR)/$(DOC_NAME).docx
-
-        # --- 编译规则 ---
-        $(OUT_DIR):
-        	@mkdir -p $(OUT_DIR)
-
-        $(OUT_DIR)/$(DOC_NAME).pdf: $(CHAPTERS) | $(OUT_DIR)
-        	@echo " brewing PDF..."
-        	@$(PANDOC) $(PANDOC_FLAGS) $(PDF_ENGINE) -o $@ $(CHAPTERS)
-        	@echo "✅ Successfully created $@"
-
-        $(OUT_DIR)/$(DOC_NAME).docx: $(CHAPTERS) | $(OUT_DIR)
-        	@echo " baking DOCX..."
-        	@$(PANDOC) $(PANDOC_FLAGS) $(WORD_TEMPLATE_FLAG) -o $@ $(CHAPTERS)
-        	@echo "✅ Successfully created $@"
-
-        clean:
-        	@echo " cleaning output directory..."
-        	@rm -rf $(OUT_DIR)/*
-    ''').strip()
+def get_abstract_template() -> str:
+    """为独立的摘要文件生成模板"""
+    # 这个函数在最终方案中不再使用，但为了避免错误，我们保留它并返回一个提示
+    return "# DEPRECATED: Abstract is now defined inside manuscript/metadata.yaml"
