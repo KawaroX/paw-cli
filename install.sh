@@ -74,13 +74,28 @@ TMP_ARCHIVE="$TMP_DIR/$ASSET_NAME"
 echo_color "1;32" ">>> 正在下载 PAW CLI (这可能需要一些时间)..."
 echo "下载地址: $DOWNLOAD_URL"
 
-# 移除 -s (静默) 参数，使用 --progress-bar 来显示进度条
-curl --progress-bar -L -o "$TMP_ARCHIVE" "$DOWNLOAD_URL"
-if [ $? -ne 0 ]; then
-    echo_color "1;31" "\n错误：下载发布文件失败。"
-    rm -rf "$TMP_DIR"
+# 关键修复：使用更健壮的下载逻辑，并提供 wget 作为备用方案
+if command -v curl >/dev/null 2>&1; then
+    # 使用 -fL 来快速失败并跟随重定向
+    curl -fL -o "$TMP_ARCHIVE" "$DOWNLOAD_URL"
+    if [ $? -ne 0 ]; then
+        echo_color "1;31" "\n错误: 使用 curl 下载失败。请检查你的网络连接后重试。"
+        rm -rf "$TMP_DIR"
+        exit 1
+    fi
+elif command -v wget >/dev/null 2>&1; then
+    # 使用 -q (静默) 和 -O (输出文件)
+    wget -q -O "$TMP_ARCHIVE" "$DOWNLOAD_URL"
+    if [ $? -ne 0 ]; then
+        echo_color "1;31" "\n错误: 使用 wget 下载失败。请检查你的网络连接后重试。"
+        rm -rf "$TMP_DIR"
+        exit 1
+    fi
+else
+    echo_color "1;31" "错误: 下载失败，你的系统需要安装 curl 或 wget。"
     exit 1
 fi
+
 
 # 5. 解压压缩包
 echo_color "1;32" ">>> 正在解压..."
@@ -92,10 +107,8 @@ if [ $? -ne 0 ]; then
 fi
 
 # 6. 安装可执行文件
-# 在解压后的文件夹里，我们的应用叫 `paw` (PyInstaller) 或 `paw` (Nuitka)
 EXTRACTED_EXE=$(find "$TMP_DIR" -type f -name "$EXE_NAME" | head -n 1)
 if [ -z "$EXTRACTED_EXE" ]; then
-    # 如果找不到 paw, 可能是 Nuitka 生成的带 .bin 后缀的文件
     EXTRACTED_EXE=$(find "$TMP_DIR" -type f -name "${EXE_NAME}.bin" | head -n 1)
 fi
 
