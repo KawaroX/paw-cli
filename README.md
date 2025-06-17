@@ -1,110 +1,134 @@
+[简体中文](https://github.com/KawaroX/paw-cli/blob/main/README-CN.md)
+
 # **🐾 PAW: Pandoc Academic Workflow**
 
-**PAW (Pandoc Academic Workflow)** 是一个为你量身打造的命令行工具，旨在提供一个一键式的、专业的、基于 Pandoc 和纯文本的学术写作环境。  
-我们的愿景是，通过极致的自动化消除繁琐的技术配置，让你从写作的第一分钟起就专注于内容创作，同时享受版本控制、格式分离和高质量排版带来的所有优势。
+**PAW (Pandoc Academic Workflow)** is a command-line tool designed for you, aiming to provide a one-click, professional, text-based academic writing and management ecosystem powered by Pandoc.
 
-## **✨ 核心功能**
+### **🤔 What is PAW?**
 
-- **一键式项目创建**: 使用 paw new 命令，瞬间生成一个包含标准目录结构、自动化编译脚本和预设配置文件的完整论文项目。
-- **跨平台的内置编译**: 使用 paw build 命令，在任何操作系统上都能轻松将你的 Markdown 文稿编译成专业的 .pdf 和 .docx 格式文档，无需担心 make 的兼容性问题。
-- **全局资源管理**: 通过 paw csl 和 paw template 命令，构建你自己的全局引文样式库和 Word 模板库，一次配置，所有项目共享。
-- **无缝的引用体验**:
-  - 使用 paw zotero (或 paw z)，一键唤出 Zotero 的文献选择器，告别手动导出 .bib 文件。
-  - 使用 paw cite，快速在项目本地的 .bib 文件中搜索并插入引文。
-- **高效的内容助手**: paw add chapter, paw add figure, paw add bib 等命令，让添加新章节、图片和参考文献变得轻而易举。
-- **智能环境检查**: paw check 会自动检查你的电脑是否已安装 Pandoc 和 LaTeX 等核心依赖，并提供指引。
-- **充满乐趣的彩蛋**: 我们在工具中埋下了一些有趣的彩蛋（试试 paw meow 或 paw woof），希望能为枯燥的学术写作带来一丝乐趣。
+In traditional academic writing, we are often bogged down by tedious formatting adjustments, chaotic citation management, and a hard-to-track version history. PAW was born to solve these pain points.  
+Our core philosophy is the **"separation of content and style."** We believe writers should dedicate 100% of their energy to **thinking and creating**, not struggling in the mire of font sizes, line spacing, and citation formats.  
+With PAW, you can:
 
-## **🚀 安装与使用**
+- Compose using simple Markdown syntax, enjoying all the advantages of plain text.
+- Generate professionally typeset .pdf and .docx documents with a single, simple command.
+- Seamlessly connect with Zotero, saying goodbye to the era of manual citation management.
+- Effortlessly manage your citation styles and Word templates, reusing them across different projects.
+- Enjoy the convenience of version control (like Git), making every revision traceable.
 
-### **1\. 前提条件**
+PAW is your loyal academic companion. It handles all the complex technical details for you, allowing you to focus on what truly matters from the very first minute of writing.
 
-在安装 PAW 之前，请确保你的电脑上已经安装了以下三个核心软件：
+### **✨ Core Features**
 
-1. **Python** (版本 3.8 或更高)
-2. **Pandoc**: PAW 的核心排版引擎。
-3. **LaTeX 发行版**: 用于生成高质量的 PDF。
-   - **macOS**: [MacTeX](https://www.tug.org/mactex/)
+- **One-Click Project Scaffolding**: Use the `paw new` command to instantly generate a complete paper project with a standard directory structure, an automated build script, and preset configuration files.
+- **Cross-Platform Built-in Compilation**: With `paw build`, easily compile your Markdown manuscript into professional .pdf and .docx formats on any operating system.
+- **Global Resource Management**: Use `paw csl` and `paw template` to build your own global library of citation styles and Word templates, configuring once and sharing across all projects.
+- **Seamless Citation Experience**:
+  - Use `paw zotero` (or `paw z`) to bring up Zotero's citation picker with a single command.
+  - Use `paw cite` to quickly search and insert citations from your project's local .bib files.
+- **Efficient Content Helpers**: Commands like `paw add chapter`, `paw add figure`, and `paw add bib` make adding new sections, images, and bibliographies a breeze.
+- **Intelligent Environment Check**: `paw check` automatically verifies if core dependencies like Pandoc and LaTeX are installed and provides guidance.
+- **Fun Easter Eggs**: We've hidden some fun little easter eggs (try `paw meow` or `paw woof`) to bring a bit of joy to the arduous process of academic writing.
+
+## **🚀 Installation Guide**
+
+### **Step 1: Prerequisites**
+
+Before installing PAW, please ensure you have the following two core pieces of software installed on your computer:
+
+1. **Pandoc**: The core typesetting engine for PAW. You can download and install it from the [official Pandoc website](https://pandoc.org/installing.html).
+2. **LaTeX Distribution (Optional, for PDF output only)**: If you need to generate high-quality PDF documents, you will need to install a LaTeX distribution.
+   - **macOS**: [MacTeX](https://www.tug.org/mactex/) (approx. 5GB)
    - **Windows**: [MiKTeX](https://miktex.org/)
-   - **Linux**: TeX Live (通常通过你的包管理器安装，如 sudo apt-get install texlive-full)
+   - **Linux**: TeX Live (usually installed via your package manager, e.g., sudo apt-get install texlive-full)
 
-安装完成后，你可以随时运行 paw check 来确认这些依赖是否都已准备就绪。
+_If you don't need to generate PDFs for now, you can skip installing LaTeX. PAW will still work perfectly to generate .docx files for you._
 
-### **2\. 安装 PAW**
+### **Step 2: Install PAW**
 
-我们**强烈推荐**使用 pipx 来安装 PAW，这可以确保它的运行环境与你的其他 Python 项目完全隔离。  
-pipx install paw-cli
+We offer two installation methods. Please choose one based on your network conditions.
 
-_(注意：在我们将 PAW 发布到 PyPI 之前，你可以暂时使用 pipx install . 在本地项目目录中安装)_  
-当然，你也可以使用 pip 进行安装：  
-pip install paw-cli
+#### **Method A: One-Liner Install (Recommended)**
 
-### **3\. 快速开始**
+This is the simplest and quickest way to install. Just open your terminal, copy the following command, and run it:
 
-开启你的第一次 PAW 写作之旅：
+```bash
+curl \-sSL https://raw.githubusercontent.com/KawaroX/paw-cli/main/install.sh | sudo \-E bash
+```
 
-1. **创建你的第一个项目**:  
-   paw new "我的第一篇 PAW 论文"
+What does this command do?  
+It downloads the latest install.sh script from GitHub and executes it with sudo permissions. The script automatically detects your system, downloads the pre-compiled PAW application, and installs it to a standard system path, allowing you to use the paw command from anywhere.
 
-2. **进入项目目录**:  
-   cd 我的第一篇 paw 论文
+#### **Method B: Manual Install (If the one-liner fails)**
 
-3. **在 manuscript 文件夹中开始写作**。当你需要插入引文时：  
-   \# 唤出 Zotero 选择器, 选择文献后, 引用键会自动复制到你的剪贴板  
-   paw z
+If your network environment prevents the curl command from running smoothly, you can install PAW manually with these steps:
 
-4. **编译你的论文**:  
-   \# 这会同时生成 paper.pdf 和 paper.docx 在 output/ 文件夹中  
-   paw build
+1. **Visit the GitHub Releases Page**:
+   - Open our [PAW-CLI Releases page](https://github.com/KawaroX/paw-cli/releases).
+2. **Download the Application Bundle**:
+   - Find the latest release (e.g., v0.6.0).
+   - In the "Assets" section, download the .tar.gz archive that matches your system. For an Apple Silicon Mac, you would download paw-v0.6.0-macos-arm64.tar.gz.
+3. **Extract and Install**:
+   - Open your terminal and navigate to your downloads directory (usually \~/Downloads).
+   - Run the following commands to extract and install the application:
 
-## **📚 命令参考**
+```bash
+# 1. Extract the file, which creates a folder named 'paw'
+tar \-xzf paw-v0.6.0-macos-arm64.tar.gz
 
-### **项目与环境**
+# 2. Move the entire 'paw' folder to a standard location
+# You will be prompted for your password
+sudo mv paw /usr/local/opt/paw-cli
 
-- paw new "标题": 创建一个新项目。
-  - 别名: paw chuangjian
-- paw build: 编译项目，生成所有格式的文档。
-  - \--pdf / \--no-pdf: 控制是否生成 PDF。
-  - \--docx / \--no-docx: 控制是否生成 DOCX。
-  - 别名: paw b
-- paw check: 检查核心依赖。
-  - 别名: paw c, paw jiancha, paw dig
-- paw shake: 清理 output/ 输出目录。
+# 3. Create a symbolic link so you can use the 'paw' command directly
+sudo ln \-sf /usr/local/opt/paw-cli/paw /usr/local/bin/paw
+```
 
-### **内容添加**
+### **Step 3: Verify Installation**
 
-- paw add chapter "标题": 添加一个新章节。
-  - 别名: paw add chap, paw add zhang
-- paw add figure \<路径\>: 添加一张图片。
-  - \-c, \--caption "标题": 为图片添加标题。
-  - 别名: paw add fig, paw add tupian
-- paw add bib \<路径\>: 向项目中添加一个 .bib 参考文献文件。
-  - 别名: paw add wenxian
+Regardless of the method you used, once finished, please open a **new terminal window** and run:
 
-### **引用管理**
+```bash
+paw --help
+```
 
-- paw zotero: 触发 Zotero 的 CAYW 搜索框。
-  - 别名: paw z
-- paw cite \[关键词\]: 搜索项目本地 .bib 文件中的文献。
-  - 别名: paw yinyong, paw hunt
+If it successfully displays the help message for PAW, the installation was a success! Next, run the environment check:
 
-### **资源库管理 (csl 和 template)**
+```
+paw check
+```
 
-- paw csl list: 列出全局库中所有可用的 CSL 样式。
-- paw csl add \<路径\>: 向全局库中添加一个新的 CSL 文件。
-- paw csl remove \<文件名\>: 从全局库中移除一个 CSL 文件。
-- paw csl use \<文件名\>: 在当前项目中使用一个全局 CSL 文件。
-- _template 命令与 csl 完全相同，只需将 csl 替换为 template 即可。_
-  - 别名: style, yangshi (for csl), tmpl, moban (for template)
+This will report the status of Pandoc and LaTeX on your system.
 
-### **趣味彩蛋**
+## **📖 Command Reference**
 
-- paw meow: 获取一条随机的写作小贴士。
-- paw woof: 查看当前项目的统计信息。
-- paw purr: 以“满足的呼噜声”模式检查项目健康状态。
-- paw paw (或 paw 🐾): 展示 PAW 的爪印。
-- paw who-is-a-good-writer: 猜猜看？
+| Command                 | Description                                 | Aliases         |
+| :---------------------- | :------------------------------------------ | :-------------- |
+| paw new "Title"         | Creates a new academic project.             | chuangjian      |
+| paw build               | Builds the project, generating all formats. | b               |
+| paw check               | Checks for core dependencies.               | c, jiancha, dig |
+| paw add chapter "Title" | Adds a new chapter to the project.          | chap, zhang     |
+| paw add figure \<path\> | Adds a figure to the project.               | fig, tupian     |
+| paw add bib \<path\>    | Adds a .bib file to the project.            | wenxian         |
+| paw zotero              | Triggers the Zotero citation picker.        | z               |
+| paw cite [keywords]     | Searches local .bib files.                  | yinyong, hunt   |
+| paw csl list/add/rm/use | Manages the global CSL style library.       | style, yangshi  |
+| paw template ...        | Manages the global Word template library.   | tmpl, moban     |
+| paw shake               | Cleans the output/ directory.               |                 |
+| paw meow                | Gets a random academic writing tip.         |                 |
+| paw woof                | Shows project statistics.                   |                 |
 
-## **许可证**
+## **Uninstalling PAW**
 
-本项目基于 MIT 许可证分发。详情请见 LICENSE 文件。
+We also provide a one-liner script to safely and completely uninstall PAW.  
+To uninstall PAW, run the following command in your terminal:
+
+```bash
+curl \-sSL https://raw.githubusercontent.com/KawaroX/paw-cli/main/uninstall.sh | sudo bash
+```
+
+The script will remove the main program and will ask for your confirmation before deleting the user data directory (~/.paw) where your CSL styles and templates are stored.
+
+## **License**
+
+This project is distributed under the **MIT** License.
